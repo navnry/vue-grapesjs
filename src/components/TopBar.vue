@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { ref } from 'vue'
 import { Icon } from '@iconify/vue'
 import DeviceSwitcher from '@/components/DeviceSwitcher.vue'
 
@@ -15,8 +16,11 @@ const emit = defineEmits<{
   (e: 'open-page-settings'): void
   (e: 'toggle-layers'): void
   (e: 'preview'): void
+  (e: 'save-draft'): void
   (e: 'publish'): void
 }>()
+
+const showPublishMenu = ref(false)
 </script>
 
 <template>
@@ -64,7 +68,7 @@ const emit = defineEmits<{
       </button>
       <DeviceSwitcher :grapes="props.grapes" />
     </div>
-    <div class="flex h-full justify-end pl-3 gap-3">
+    <div class="flex h-full justify-end pl-3 gap-3 relative">
       <button
         type="button"
         class="w-8 h-8 self-center flex items-center justify-center rounded hover:bg-editor-btn-hover"
@@ -92,8 +96,21 @@ const emit = defineEmits<{
         </button>
         <button
           class="h-full flex border-l border-white/20 items-center justify-center aspect-square py-1 bg-editor-primary text-white hover:bg-blue-600"
+          @click="showPublishMenu = !showPublishMenu"
         >
           <Icon icon="ep:arrow-down" />
+        </button>
+      </div>
+      <div
+        v-show="showPublishMenu"
+        class="absolute right-0 top-12 z-20 bg-white border rounded shadow text-xs min-w-[140px]"
+      >
+        <button
+          type="button"
+          class="w-full text-left px-3 py-2 hover:bg-gray-50"
+          @click="emit('save-draft')"
+        >
+          保存草稿
         </button>
       </div>
     </div>

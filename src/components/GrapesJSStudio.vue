@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { ref, computed, watch } from 'vue'
-import { useGrapes, useSelectedComponent, usePages, useIndexedDbStorage } from '@/composables'
+import { useGrapes, useSelectedComponent, usePages } from '@/composables'
 import '@/assets/vue-grapes.css'
 import { Icon } from '@iconify/vue'
 import BlocksPanel from '@/components/BlocksPanel.vue'
@@ -17,6 +17,7 @@ import {
 } from '@/utils/pageSettings'
 import { buildPublishPayload } from '@/utils/publish'
 import { collectUsedClasses, buildTailwindCss } from '@/utils/tailwind'
+import { saveDraft } from '@/utils/draftStorage'
 // Use ref to determine container for the canvas
 const canvas = ref(null)
 const escapeName = (name: string) => `${name}`.trim().replace(/([^a-z0-9\w-:/]+)/gi, '-')
@@ -33,7 +34,6 @@ const grapes = useGrapes({
   selectorManager: { escapeName },
   plugins: [grapesjsTailwind],
 })
-useIndexedDbStorage(grapes)
 const editorRef = ref<any>(null)
 const isEditorReady = ref(false)
 const hasEditorLoad = ref(false)
@@ -136,6 +136,14 @@ const openPreview = async () => {
   win.document.close()
 }
 
+const handleSaveDraft = async () => {
+  const editor = editorRef.value
+  if (!editor) return
+  const data = buildPublishPayload(editor)
+  await saveDraft('draft', data)
+  console.log('[Draft] saved')
+}
+
 const showPageSettings = ref(false)
 const pageSettings = ref<PageSettings>({
   id: '',
@@ -177,6 +185,7 @@ const savePageSettings = () => {
       @open-page-settings="openPageSettings"
       @toggle-layers="toggleLayers"
       @preview="openPreview"
+      @save-draft="handleSaveDraft"
       @publish="handlePublish"
     />
     <div class="flex-1 min-h-0 grid grid-cols-[280px_1fr]">

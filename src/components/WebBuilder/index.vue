@@ -67,7 +67,7 @@ grapes.onInit((editor) => {
   })
 })
 
-const READY_DELAY_MS = 1200
+const READY_DELAY_MS = 1000
 const updateReady = () => {
   if (hasEditorLoad.value && hasFrameLoad.value) {
     requestAnimationFrame(() => {
@@ -192,39 +192,39 @@ const savePageSettings = () => {
 </script>
 
 <template>
-  <div class="h-screen flex flex-col relative" v-loading="!isEditorReady">
-    <div v-show="isEditorReady">
-      <TopBar
-        :active-panel="activePanel"
-        :show-menu="showMenu"
-        :show-layers="showLayers"
-        :grapes="grapes"
-        @toggle-menu="toggleMenu"
-        @select-panel="handleSelectPanel"
-        @open-page-settings="openPageSettings"
-        @toggle-layers="toggleLayers"
-        @preview="openPreview"
-        @save-draft="handleSaveDraft"
-        @publish="handlePublish"
-      />
-      <div class="flex-1 min-h-0 grid grid-cols-[280px_1fr]">
-        <div class="min-h-0 overflow-y-auto overflow-x-hidden border-r">
-          <BlocksPanel v-show="activePanel === 'blocks'" :grapes="grapes" />
-          <PagesPanel v-show="activePanel === 'pages'" :grapes="grapes" />
-          <GlobalSettingsPanel v-show="activePanel === 'global'" :grapes="grapes" />
-          <StylesPropertiesPanel v-show="activePanel === 'styles'" :grapes="grapes" />
+  <div class="h-screen relative" v-loading="!isEditorReady">
+      <div class="h-full flex flex-col" v-show="isEditorReady">
+        <TopBar
+          :active-panel="activePanel"
+          :show-menu="showMenu"
+          :show-layers="showLayers"
+          :grapes="grapes"
+          @toggle-menu="toggleMenu"
+          @select-panel="handleSelectPanel"
+          @open-page-settings="openPageSettings"
+          @toggle-layers="toggleLayers"
+          @preview="openPreview"
+          @save-draft="handleSaveDraft"
+          @publish="handlePublish"
+        />
+        <div class="flex-1 min-h-0 grid grid-cols-[280px_1fr]">
+          <div class="min-h-0 overflow-y-auto overflow-x-hidden border-r">
+            <BlocksPanel v-show="activePanel === 'blocks'" :grapes="grapes" />
+            <PagesPanel v-show="activePanel === 'pages'" :grapes="grapes" />
+            <GlobalSettingsPanel v-show="activePanel === 'global'" :grapes="grapes" />
+            <StylesPropertiesPanel v-show="activePanel === 'styles'" :grapes="grapes" />
+          </div>
+          <div class="relative">
+            <div ref="canvas" class="absolute inset-0" />
+          </div>
         </div>
-        <div class="relative">
-          <div ref="canvas" class="absolute inset-0" />
-        </div>
-      </div>
-      <LayersPanel v-show="showLayers" :grapes="grapes" @close="showLayers = false" />
+        <LayersPanel v-show="showLayers" :grapes="grapes" @close="showLayers = false" />
 
-      <PageSettingsModal
-        v-model="showPageSettings"
-        :settings="pageSettings"
-        @save="savePageSettings"
-      />
-    </div>
+        <PageSettingsModal
+          v-model="showPageSettings"
+          :settings="pageSettings"
+          @save="savePageSettings"
+        />
+      </div>
   </div>
 </template>

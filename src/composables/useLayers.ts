@@ -35,18 +35,25 @@ export default function useLayers(grapes: any) {
     // After GrapesJs is loaded.
     grapes.onInit((editor: any) => {
       // Set selection functions
-      layers.select = editor.select
-      layers.selectAdd = editor.selectAdd
-      layers.selectRemove = editor.selectRemove
-      layers.selectToggle = editor.selectToggle
+      layers.select = editor.select.bind(editor)
+      layers.selectAdd = editor.selectAdd.bind(editor)
+      layers.selectRemove = editor.selectRemove.bind(editor)
+      layers.selectToggle = editor.selectToggle.bind(editor)
 
-      // Set top level component
-      layers.wrapper = reactiveModel(editor.getWrapper(), {
-        overwrites: {
-          components: getChildren,
-        },
-        events: cmpEvents,
-      })
+      function updateWrapper() {
+        const wrapper = editor.getWrapper()
+        if (!wrapper) return
+        if (layers.wrapper?._decouple) layers.wrapper._decouple()
+        layers.wrapper = reactiveModel(wrapper, {
+          overwrites: {
+            components: getChildren,
+          },
+          events: cmpEvents,
+        })
+      }
+
+      updateWrapper()
+      editor.on('load', updateWrapper)
     })
   }
 

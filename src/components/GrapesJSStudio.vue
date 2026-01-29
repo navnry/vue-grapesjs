@@ -2,16 +2,17 @@
 import { ref, computed, watch } from 'vue'
 import { useGrapes, useSelectedComponent } from '@/composables'
 import '@/assets/vue-grapes.css'
+import { Icon } from '@iconify/vue'
 import Traits from '@/components/Traits.vue'
 import DeviceSwitcher from '@/components/DeviceSwitcher.vue'
 import BlocksPanel from '@/components/BlocksPanel.vue'
 import StylesPropertiesPanel from '@/components/StylesPropertiesPanel.vue'
 import PagesPanel from '@/components/PagesPanel.vue'
+import LayersPanel from '@/components/LayersPanel.vue'
 import grapesjsTailwind from 'grapesjs-tailwind'
 // Use ref to determine container for the canvas
 const canvas = ref(null)
-const escapeName = (name: string) =>
-  `${name}`.trim().replace(/([^a-z0-9\w-:/]+)/gi, '-')
+const escapeName = (name: string) => `${name}`.trim().replace(/([^a-z0-9\w-:/]+)/gi, '-')
 
 // Pass GrapesJS configuration object to useGrapes
 const grapes = useGrapes({
@@ -24,6 +25,10 @@ const grapes = useGrapes({
   },
   selectorManager: { escapeName },
   plugins: [grapesjsTailwind],
+})
+const editorRef = ref<any>(null)
+grapes.onInit((editor) => {
+  editorRef.value = editor
 })
 const selected = useSelectedComponent(grapes)
 const hasSelection = computed(() => {
@@ -44,17 +49,32 @@ watch(
       activePanel.value = 'blocks'
     }
   },
-  { immediate: true }
+  { immediate: true },
 )
 
 const showMenu = ref(false)
 const toggleMenu = () => {
   showMenu.value = !showMenu.value
 }
+
+const showLayers = ref(true)
+const toggleLayers = () => {
+  showLayers.value = !showLayers.value
+}
+
+const handlePublish = () => {
+  const editor = editorRef.value
+  if (!editor) {
+    console.warn('[Publish] Editor not ready')
+    return
+  }
+  const data = editor.getProjectData?.() ?? editor.getComponents?.()
+  console.log('[Publish] data', data)
+}
 </script>
 
 <template>
-  <div class="h-screen flex flex-col">
+  <div class="h-screen flex flex-col relative">
     <div class="h-12 flex-shrink-0 bg-blue-100 grid grid-cols-[1fr_auto_1fr] items-center">
       <div class="flex items-center gap-2 pl-3 relative">
         <button
@@ -93,7 +113,29 @@ const toggleMenu = () => {
         </button>
       </div>
       <DeviceSwitcher :grapes="grapes" />
-      <div class=""></div>
+      <div class="flex h-full justify-end pl-3 gap-3">
+        <button
+          type="button"
+          class="w-8 h-8 self-center flex items-center justify-center rounded bg-white/70 hover:bg-white"
+          :class="showLayers ? 'text-blue-700' : 'text-gray-500'"
+          @click="toggleLayers"
+          :aria-pressed="showLayers"
+          aria-label="Toggle layers"
+        >
+          <Icon icon="si:layers-line" />
+        </button>
+        <div class="flex">
+          <button
+            class="h-full text-sm px-8 py-1 bg-blue-500 text-white hover:bg-blue-600"
+            @click="handlePublish"
+          >
+            发布
+          </button>
+          <button class="h-full flex border-l border-gray-300 items-center justify-center aspect-square py-1 bg-blue-500 text-white hover:bg-blue-600">
+            <Icon icon="ep:arrow-down" />
+          </button>
+        </div>
+      </div>
     </div>
     <div class="flex-1 min-h-0 grid grid-cols-[280px_1fr]">
       <div class="min-h-0 overflow-y-auto overflow-x-hidden border-r">
@@ -103,5 +145,6 @@ const toggleMenu = () => {
       </div>
       <div ref="canvas"></div>
     </div>
+    <LayersPanel v-show="showLayers" :grapes="grapes" />
   </div>
 </template>

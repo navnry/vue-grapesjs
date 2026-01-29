@@ -4,7 +4,7 @@ import { Icon } from '@iconify/vue'
 import DeviceSwitcher from '@/components/DeviceSwitcher.vue'
 
 const props = defineProps<{
-  activePanel: 'blocks' | 'pages' | 'styles'
+  activePanel: 'blocks' | 'pages' | 'styles' | 'global'
   showMenu: boolean
   showLayers: boolean
   grapes: any
@@ -12,7 +12,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'toggle-menu'): void
-  (e: 'select-panel', panel: 'blocks' | 'pages'): void
+  (e: 'select-panel', panel: 'blocks' | 'pages' | 'global'): void
   (e: 'open-page-settings'): void
   (e: 'toggle-layers'): void
   (e: 'preview'): void
@@ -37,7 +37,13 @@ const showPublishMenu = ref(false)
         v-show="props.showMenu"
         class="absolute left-3 top-10 z-10 bg-white border rounded shadow text-xs min-w-[140px]"
       >
-        <button type="button" class="w-full text-left px-3 py-2 hover:bg-gray-50">全局设置</button>
+        <button
+          type="button"
+          class="w-full text-left px-3 py-2 hover:bg-gray-50"
+          @click="emit('select-panel', 'global')"
+        >
+          全局设置
+        </button>
         <button type="button" class="w-full text-left px-3 py-2 hover:bg-gray-50">返回后台</button>
       </div>
       <button

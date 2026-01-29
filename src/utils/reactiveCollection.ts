@@ -98,7 +98,9 @@ function updateCollection(proxy: any[], options: any, collection: any) {
   // Includes is not available on a reactive object so the raw array is needed
   const rawProxy = toRaw(proxy)
   for (const model of cache) {
-    if (!rawProxy.includes(model)) model._decouple()
+    if (!rawProxy.includes(model) && typeof model._decouple === 'function') {
+      model._decouple()
+    }
   }
 }
 

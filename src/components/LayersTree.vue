@@ -8,6 +8,10 @@ const props = defineProps<{
   selectedKey?: string | null
 }>()
 
+const emit = defineEmits<{
+  (e: 'context', payload: { node: any; x: number; y: number }): void
+}>()
+
 const getLabel = (node: any) =>
   node?.getName?.() ??
   node?.get?.('name') ??
@@ -70,6 +74,7 @@ const toggleNode = (node: any) => {
   localStore.openState[key] = !isOpen(node)
 }
 
+
 const list = computed(() => normalizeNodes(props.nodes))
 
 const findPath = (nodes: any[], targetKey: string, path: string[] = []): string[] | null => {
@@ -124,12 +129,13 @@ defineExpose({ toggleAll })
       v-for="node in list"
       :key="getNodeKey(node)"
       :ref="(el) => { const key = getNodeKey(node); if (key && el) nodeEls.set(key, el as HTMLElement) }"
+      class="relative group"
     >
-      <div class="flex items-center">
+      <div class="flex items-center pointer-events-none">
         <button
           v-if="getChildrenNodes(node).length"
           type="button"
-          class="w-5 h-5 flex items-center justify-center rounded hover:bg-gray-50"
+          class="w-5 h-5 flex items-center justify-center rounded hover:bg-gray-50 pointer-events-auto"
           @click.stop="toggleNode(node)"
           :aria-label="isOpen(node) ? 'Collapse' : 'Expand'"
         >
@@ -142,9 +148,10 @@ defineExpose({ toggleAll })
         <span v-else class="w-5 h-5 inline-block"></span>
         <button
           type="button"
-          class="flex-1 text-left text-xs px-2 py-1 rounded hover:bg-gray-50"
+          class="flex-1 text-left text-xs px-2 py-1 rounded hover:bg-gray-50 pointer-events-auto"
           :class="getNodeKey(node) === props.selectedKey ? 'bg-blue-50 text-blue-700' : ''"
           @click="props.onSelect(node._model ?? node)"
+          @contextmenu.prevent="emit('context', { node, x: $event.clientX, y: $event.clientY })"
         >
           {{ getLabel(node) }}
         </button>
@@ -160,6 +167,7 @@ defineExpose({ toggleAll })
             :nodes="getChildrenNodes(node)"
             :on-select="props.onSelect"
             :selected-key="props.selectedKey"
+            @context="emit('context', $event)"
           />
         </div>
       </div>
@@ -182,4 +190,5 @@ defineExpose({ toggleAll })
   overflow: hidden;
   min-height: 0;
 }
+
 </style>

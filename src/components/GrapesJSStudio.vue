@@ -5,6 +5,7 @@ import '@/assets/vue-grapes.css'
 import { Icon } from '@iconify/vue'
 import BlocksPanel from '@/components/BlocksPanel.vue'
 import StylesPropertiesPanel from '@/components/StylesPropertiesPanel.vue'
+import GlobalSettingsPanel from '@/components/GlobalSettingsPanel.vue'
 import PagesPanel from '@/components/PagesPanel.vue'
 import LayersPanel from '@/components/LayersPanel.vue'
 import PageSettingsModal from '@/components/PageSettingsModal.vue'
@@ -25,6 +26,11 @@ const escapeName = (name: string) => `${name}`.trim().replace(/([^a-z0-9\w-:/]+)
 // Pass GrapesJS configuration object to useGrapes
 const grapes = useGrapes({
   container: canvas,
+  canvas: {
+    styles: [
+      'https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap',
+    ],
+  },
   deviceManager: {
     devices: [
       { id: 'desktop', name: 'Desktop', icon: 'lucide:monitor' },
@@ -40,6 +46,17 @@ const hasEditorLoad = ref(false)
 const hasFrameLoad = ref(false)
 grapes.onInit((editor) => {
   editorRef.value = editor
+  const fontProp = editor.StyleManager?.getProperty?.('typography', 'font-family')
+  if (fontProp?.addOption) {
+    const options = fontProp.getOptions?.() ?? []
+    const hasPoppins = options.some((opt: any) => {
+      const value = fontProp.getOptionId?.(opt) ?? opt?.value ?? opt
+      return `${value}`.toLowerCase().includes('poppins')
+    })
+    if (!hasPoppins) {
+      fontProp.addOption({ id: 'Poppins', label: 'Poppins' })
+    }
+  }
   editor.on('load', () => {
     hasEditorLoad.value = true
     updateReady()
@@ -70,7 +87,7 @@ const selectedKey = computed(() => {
   const comp = selected.component as any
   return comp?.cid ?? comp?._model?.cid ?? null
 })
-const activePanel = ref<'blocks' | 'styles' | 'pages'>('blocks')
+const activePanel = ref<'blocks' | 'styles' | 'pages' | 'global'>('blocks')
 watch(
   selectedKey,
   (key) => {
@@ -86,6 +103,11 @@ watch(
 const showMenu = ref(false)
 const toggleMenu = () => {
   showMenu.value = !showMenu.value
+}
+
+const handleSelectPanel = (panel: 'blocks' | 'pages' | 'global') => {
+  activePanel.value = panel
+  showMenu.value = false
 }
 
 const showLayers = ref(true)
@@ -181,7 +203,7 @@ const savePageSettings = () => {
       :show-layers="showLayers"
       :grapes="grapes"
       @toggle-menu="toggleMenu"
-      @select-panel="activePanel = $event"
+      @select-panel="handleSelectPanel"
       @open-page-settings="openPageSettings"
       @toggle-layers="toggleLayers"
       @preview="openPreview"
@@ -192,6 +214,7 @@ const savePageSettings = () => {
       <div class="min-h-0 overflow-y-auto overflow-x-hidden border-r">
         <BlocksPanel v-show="activePanel === 'blocks'" :grapes="grapes" />
         <PagesPanel v-show="activePanel === 'pages'" :grapes="grapes" />
+        <GlobalSettingsPanel v-show="activePanel === 'global'" :grapes="grapes" />
         <StylesPropertiesPanel v-show="activePanel === 'styles'" :grapes="grapes" />
       </div>
       <div class="relative">

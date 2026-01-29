@@ -1,13 +1,20 @@
 <script lang="ts" setup>
-import { computed, reactive } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { Icon } from '@iconify/vue'
 import { useBlockManager } from '@/composables'
+import { componentCategories, componentTemplates } from '@/utils/template-library'
 
 const props = defineProps<{
   grapes: any
 }>()
 
 const blockMgr = useBlockManager(props.grapes)
+const editorRef = ref<any>(null)
+props.grapes.onInit((editor: any) => {
+  editorRef.value = editor
+})
+
+const activeTab = ref<'blocks' | 'templates'>('blocks')
 const openState = reactive<Record<string, boolean>>({})
 
 const getBlockCategory = (block: any) => {
@@ -61,45 +68,143 @@ const getBlockMedia = (block: any) => {
   if (raw.content) return raw.content
   return ''
 }
+
+const templateCategories = computed(() => {
+  return componentCategories.map((category) => ({
+    ...category,
+    items: componentTemplates.filter((tpl) => tpl.category === category.id),
+  }))
+})
+
+const templateFilter = ref('all')
+
+const filteredTemplateGroups = computed(() => {
+  if (templateFilter.value === 'all') return templateCategories.value
+  return templateCategories.value
+    .map((category) => ({
+      ...category,
+      items: category.items.filter((tpl) => tpl.category === templateFilter.value),
+    }))
+    .filter((category) => category.items.length > 0)
+})
+
+const addTemplate = (template: any) => {
+  const editor = editorRef.value
+  if (!editor) return
+  editor.addComponents(template.content)
+}
+
+const addBlockToCanvas = (block: any) => {
+  const editor = editorRef.value
+  if (!editor) return
+  const content = block?.get?.('content') ?? block?.content
+  if (!content) return
+  editor.addComponents(content)
+}
 </script>
 
 <template>
   <div class="p-3">
-    <div class="text-sm font-medium text-gray-700 mb-2 text-center">Blocks</div>
-    <div class="grid grid-cols-1 gap-4">
-      <div v-for="group in groupedBlocks" :key="group.id">
-        <button
-          type="button"
-          class="w-full flex items-center justify-between text-xs font-medium text-gray-500 mb-2"
-          @click="toggleGroup(group)"
-          :aria-expanded="isOpen(group)"
-        >
-          <span>{{ group.label }}</span>
-          <Icon
-            icon="lucide:chevron-down"
-            class="transition-transform duration-200"
-            :class="{ 'rotate-180': isOpen(group) }"
-          />
-        </button>
-        <div class="collapse-wrapper" :class="{ open: isOpen(group) }">
-          <div class="collapse-content">
-            <div class="grid grid-cols-2 gap-2">
-              <button
-                v-for="block in group.items"
-                :key="block.id"
-                class="border rounded px-2 py-2 text-left hover:bg-gray-50"
-                draggable="true"
-                @dragstart="blockMgr.dragStart(block, $event)"
-                @dragend="blockMgr.dragStop()"
-                :title="block.label"
-                :aria-label="block.label"
-              >
-                <div class="w-full flex items-center justify-center">
-                  <div class="block-media" v-html="getBlockMedia(block)"></div>
-                </div>
-              </button>
+    <div class="flex items-center justify-center gap-2 mb-3">
+      <button
+        type="button"
+        class="text-xs px-2 py-1 rounded"
+        :class="activeTab === 'blocks' ? 'bg-blue-100 text-blue-700' : 'text-gray-500'"
+        @click="activeTab = 'blocks'"
+      >
+        Blocks
+      </button>
+      <button
+        type="button"
+        class="text-xs px-2 py-1 rounded"
+        :class="activeTab === 'templates' ? 'bg-blue-100 text-blue-700' : 'text-gray-500'"
+        @click="activeTab = 'templates'"
+      >
+        Templates
+      </button>
+    </div>
+    <div v-show="activeTab === 'blocks'" class="grid grid-cols-1 gap-4">
+      <template v-for="group in groupedBlocks" :key="group.id">
+        <div class="border-b">
+          <button
+            type="button"
+            class="w-full flex items-center justify-between text-xs font-medium text-gray-500 mb-2"
+            @click="toggleGroup(group)"
+            :aria-expanded="isOpen(group)"
+          >
+            <span>{{ group.label }}</span>
+            <Icon
+              icon="lucide:chevron-down"
+              class="transition-transform duration-200"
+              :class="{ 'rotate-180': isOpen(group) }"
+            />
+          </button>
+          <div class="collapse-wrapper" :class="{ open: isOpen(group) }">
+            <div class="collapse-content">
+              <div class="grid grid-cols-2 gap-2 py-3">
+                <template v-for="block in group.items" :key="block.id">
+                  <button
+                    class="border rounded px-2 py-2 text-left hover:bg-gray-50"
+                    draggable="true"
+                    @dragstart="blockMgr.dragStart(block, $event)"
+                    @dragend="blockMgr.dragStop()"
+                    @click="addBlockToCanvas(block)"
+                    :title="block.label"
+                    :aria-label="block.label"
+                  >
+                    <div class="w-full flex items-center justify-center">
+                      <div class="block-media" v-html="getBlockMedia(block)"></div>
+                    </div>
+                  </button>
+                </template>
+              </div>
             </div>
           </div>
+        </div>
+      </template>
+    </div>
+    <div v-show="activeTab === 'templates'" class="grid grid-cols-1 gap-4">
+      <div class="flex flex-wrap gap-2">
+        <button
+          type="button"
+          class="text-[11px] px-2 py-1 rounded-full"
+          :class="templateFilter === 'all' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'"
+          @click="templateFilter = 'all'"
+        >
+          全部
+        </button>
+        <button
+          v-for="category in templateCategories"
+          :key="category.id"
+          type="button"
+          class="text-[11px] px-2 py-1 rounded-full"
+          :class="templateFilter === category.id ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'"
+          @click="templateFilter = category.id"
+        >
+          {{ category.label }}
+        </button>
+      </div>
+      <div v-for="group in filteredTemplateGroups" :key="group.id">
+        <div class="text-xs font-medium text-gray-500 mb-2">{{ group.label }}</div>
+        <div class="grid grid-cols-1 gap-2">
+          <button
+            v-for="tpl in group.items"
+            :key="tpl.id"
+            class="border rounded p-2 text-left hover:bg-gray-50"
+            @click="addTemplate(tpl)"
+            :title="tpl.label"
+            :aria-label="tpl.label"
+          >
+            <div class="w-full aspect-[2/1] bg-gray-50 rounded mb-2 overflow-hidden">
+              <img
+                v-if="tpl.thumbnail"
+                :src="tpl.thumbnail"
+                :alt="tpl.label"
+                class="w-full h-full object-cover"
+              />
+            </div>
+            <div class="text-xs text-gray-700 truncate">{{ tpl.label }}</div>
+          </button>
         </div>
       </div>
     </div>

@@ -17,9 +17,9 @@ const save = () => emit('save')
 
 <template>
   <div v-if="props.modelValue" class="absolute inset-0 z-20 flex items-center justify-center">
-    <div class="absolute inset-0 bg-black/30" @click="close"></div>
-    <div class="relative bg-white rounded shadow w-[360px]">
-      <div class="px-4 py-3 border-b text-sm font-medium">页面设置</div>
+    <div class="absolute inset-0 bg-black/60" @click="close"></div>
+    <div class="relative bg-white rounded shadow w-[480px]">
+      <div class="px-4 py-3 border-b text-sm font-medium text-center">页面设置</div>
       <div class="p-4 space-y-3">
         <div>
           <div class="text-xs text-gray-500 mb-1">页面 ID</div>

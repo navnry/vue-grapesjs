@@ -125,7 +125,7 @@ defineExpose({ toggleAll })
       :key="getNodeKey(node)"
       :ref="(el) => { const key = getNodeKey(node); if (key && el) nodeEls.set(key, el as HTMLElement) }"
     >
-      <div class="flex items-center gap-1">
+      <div class="flex items-center">
         <button
           v-if="getChildrenNodes(node).length"
           type="button"
@@ -134,8 +134,8 @@ defineExpose({ toggleAll })
           :aria-label="isOpen(node) ? 'Collapse' : 'Expand'"
         >
           <Icon
-            icon="lucide:chevron-right"
-            class="text-xs transition-transform duration-200"
+            icon="tabler:caret-right-filled"
+            class="transition-transform duration-200"
             :class="{ 'rotate-90': isOpen(node) }"
           />
         </button>

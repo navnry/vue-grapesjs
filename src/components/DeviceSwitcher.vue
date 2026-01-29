@@ -31,11 +31,11 @@ const getDeviceIcon = (device: any) => {
     <template v-for="device in deviceMgr.devices" :key="device.id">
       <button
         :class="{
-          'bg-blue-200 text-blue-700':
+          'bg-editor-btn-active':
             getDeviceId(device) === getDeviceId(deviceMgr.selected),
         }"
         @click="deviceMgr.select(device)"
-        class="aspect-square w-8 flex items-center justify-center rounded"
+        class="aspect-square w-8 flex items-center justify-center rounded text-white"
         :title="getDeviceName(device)"
         :aria-label="getDeviceName(device)"
       >

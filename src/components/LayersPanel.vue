@@ -8,6 +8,10 @@ const props = defineProps<{
   grapes: any
 }>()
 
+const emit = defineEmits<{
+  (e: 'close'): void
+}>()
+
 const layers = useLayers(props.grapes)
 const selected = useSelectedComponent(props.grapes)
 const treeRef = ref<InstanceType<typeof LayersTree> | null>(null)
@@ -92,24 +96,34 @@ onBeforeUnmount(() => {
     :style="{ left: `${pos.x}px`, top: `${pos.y}px` }"
   >
     <div
-      class="px-3 py-2 border-b text-sm font-medium text-gray-700 flex items-center gap-2 cursor-move select-none"
+      class="px-3 py-2 border-b text-sm font-medium text-gray-700 grid grid-cols-[1fr_auto_1fr] items-center gap-2 cursor-move select-none"
       @mousedown="onDragStart"
     >
       <button
         type="button"
-        class="w-5 h-5 flex items-center justify-center rounded hover:bg-gray-50"
+        class="size-5 border flex items-center justify-center rounded hover:bg-gray-50"
         @click="toggleAll"
         :aria-label="allExpanded ? 'Collapse all' : 'Expand all'"
       >
         <Icon
-          icon="lucide:chevrons-right"
-          class="text-xs transition-transform duration-200"
+          icon="icon-park-solid:right-one"
+          class="transition-transform duration-200"
           :class="{ 'rotate-90': allExpanded }"
         />
       </button>
       <span>Layers</span>
+      <button
+        type="button"
+        class="size-5 justify-self-end flex items-center justify-center rounded hover:bg-gray-50"
+        @click.stop="emit('close')"
+      >
+        <Icon
+          icon="uiw:close"
+          class="text-xs transition-transform duration-200"
+        />
+      </button>
     </div>
-    <div class="max-h-[60vh] overflow-auto p-2">
+    <div class="h-80 overflow-auto p-2">
       <LayersTree
         ref="treeRef"
         :nodes="nodes"

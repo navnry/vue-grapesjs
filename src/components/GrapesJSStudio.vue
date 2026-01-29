@@ -1,8 +1,8 @@
 <script lang="ts" setup>
 import { ref, computed, watch } from 'vue'
-import { useGrapes, useSelectedComponent, usePages } from '@/composables'
+import { useGrapes, useSelectedComponent, usePages, useIndexedDbStorage } from '@/composables'
 import '@/assets/vue-grapes.css'
-import Traits from '@/components/Traits.vue'
+import { Icon } from '@iconify/vue'
 import BlocksPanel from '@/components/BlocksPanel.vue'
 import StylesPropertiesPanel from '@/components/StylesPropertiesPanel.vue'
 import PagesPanel from '@/components/PagesPanel.vue'
@@ -16,6 +16,7 @@ import {
   applyPageSettingsToPage,
 } from '@/utils/pageSettings'
 import { buildPublishPayload } from '@/utils/publish'
+import { collectUsedClasses, buildTailwindCss } from '@/utils/tailwind'
 // Use ref to determine container for the canvas
 const canvas = ref(null)
 const escapeName = (name: string) => `${name}`.trim().replace(/([^a-z0-9\w-:/]+)/gi, '-')
@@ -32,10 +33,33 @@ const grapes = useGrapes({
   selectorManager: { escapeName },
   plugins: [grapesjsTailwind],
 })
+useIndexedDbStorage(grapes)
 const editorRef = ref<any>(null)
+const isEditorReady = ref(false)
+const hasEditorLoad = ref(false)
+const hasFrameLoad = ref(false)
 grapes.onInit((editor) => {
   editorRef.value = editor
+  editor.on('load', () => {
+    hasEditorLoad.value = true
+    updateReady()
+  })
+  editor.on('canvas:frame:load', () => {
+    hasFrameLoad.value = true
+    updateReady()
+  })
 })
+
+const READY_DELAY_MS = 1200
+const updateReady = () => {
+  if (hasEditorLoad.value && hasFrameLoad.value) {
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        isEditorReady.value = true
+      }, READY_DELAY_MS)
+    })
+  }
+}
 const selected = useSelectedComponent(grapes)
 const pagesMgr = usePages(grapes)
 const hasSelection = computed(() => {
@@ -69,14 +93,47 @@ const toggleLayers = () => {
   showLayers.value = !showLayers.value
 }
 
-const handlePublish = () => {
+const handlePublish = async () => {
   const editor = editorRef.value
   if (!editor) {
     console.warn('[Publish] Editor not ready')
     return
   }
   const data = buildPublishPayload(editor)
-  console.log('[Publish] data', data)
+  const classes = collectUsedClasses(editor)
+
+  try {
+    const tailwindCss = await buildTailwindCss(classes)
+    console.log('[Publish] data', { ...data, tailwind: { classes, css: tailwindCss } })
+  } catch (error) {
+    console.warn('[Publish] tailwind generation skipped (requires Node.js)', error)
+    console.log('[Publish] data', { ...data, tailwind: { classes, css: '' } })
+  }
+}
+
+const openPreview = async () => {
+  const editor = editorRef.value
+  if (!editor) return
+  const page = editor.Pages?.getSelected?.()
+  const component = page?.getMainComponent?.()
+  const html = component ? editor.getHtml({ component }) : editor.getHtml()
+  const css = component ? editor.getCss({ component }) : editor.getCss()
+
+  const classes = collectUsedClasses(editor)
+  let tailwindCss = ''
+  try {
+    tailwindCss = await buildTailwindCss(classes)
+  } catch (error) {
+    console.warn('[Preview] tailwind generation skipped (requires Node.js)', error)
+  }
+
+  const win = window.open('', '_blank')
+  if (!win) return
+  win.document.open()
+  win.document.write(
+    `<!doctype html><html><head><style>${tailwindCss}\n${css}</style></head><body>${html}</body></html>`
+  )
+  win.document.close()
 }
 
 const showPageSettings = ref(false)
@@ -119,6 +176,7 @@ const savePageSettings = () => {
       @select-panel="activePanel = $event"
       @open-page-settings="openPageSettings"
       @toggle-layers="toggleLayers"
+      @preview="openPreview"
       @publish="handlePublish"
     />
     <div class="flex-1 min-h-0 grid grid-cols-[280px_1fr]">
@@ -127,9 +185,22 @@ const savePageSettings = () => {
         <PagesPanel v-show="activePanel === 'pages'" :grapes="grapes" />
         <StylesPropertiesPanel v-show="activePanel === 'styles'" :grapes="grapes" />
       </div>
-      <div ref="canvas"></div>
+      <div class="relative">
+        <div
+          ref="canvas"
+          class="absolute inset-0 transition-opacity duration-200"
+          :class="isEditorReady ? 'opacity-100' : 'opacity-0 pointer-events-none'"
+        ></div>
+        <div
+          v-if="!isEditorReady"
+          class="absolute inset-0 z-10 flex gap-3 flex-col items-center justify-center bg-white/80 text-sm text-gray-500"
+        >
+        <Icon icon="eos-icons:loading" class="text-2xl" />
+          正在加载编辑器...
+        </div>
+      </div>
     </div>
-    <LayersPanel v-show="showLayers" :grapes="grapes" />
+    <LayersPanel v-show="showLayers" :grapes="grapes" @close="showLayers = false" />
 
     <PageSettingsModal
       v-model="showPageSettings"

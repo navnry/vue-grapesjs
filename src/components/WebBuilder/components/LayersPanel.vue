@@ -1,8 +1,8 @@
 <script lang="ts" setup>
 import { computed, isRef, ref, onBeforeUnmount, onMounted } from 'vue'
 import { Icon } from '@iconify/vue'
-import { useLayers, useSelectedComponent } from '@/composables'
-import LayersTree from '@/components/LayersTree.vue'
+import { useLayers, useSelectedComponent } from '@/components/WebBuilder/composables'
+import LayersTree from '@/components/WebBuilder/components/LayersTree.vue'
 
 const props = defineProps<{
   grapes: any

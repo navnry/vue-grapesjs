@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import GrapesJSStudio from '@/components/GrapesJSStudio.vue'
+import WebBuilder from '@/components/WebBuilder/index.vue'
 </script>
 
 <template>
   <main class="studio-page">
-    <GrapesJSStudio />
+    <WebBuilder />
   </main>
 </template>
 

@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import type { PageSettings } from '@/utils/pageSettings'
+import type { PageSettings } from '@/components/WebBuilder/utils/pageSettings'
 
 const props = defineProps<{
   modelValue: boolean

@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { computed, ref } from 'vue'
-import { useSelectedComponent, useStyleProps, useStyles } from '@/composables'
-import StylePropField from '@/components/StylePropField.vue'
+import { useSelectedComponent, useStyleProps, useStyles } from '@/components/WebBuilder/composables'
+import StylePropField from '@/components/WebBuilder/components/StylePropField.vue'
 
 const props = defineProps<{
   grapes: any

@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { Icon } from '@iconify/vue'
-import { useDevices } from '@/composables'
+import { useDevices } from '@/components/WebBuilder/composables'
 
 const props = defineProps<{
   grapes: any

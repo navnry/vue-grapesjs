@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { computed, ref } from 'vue'
-import { usePages } from '@/composables'
+import { usePages } from '@/components/WebBuilder/composables'
 
 const props = defineProps<{
   grapes: any

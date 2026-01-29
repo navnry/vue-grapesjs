@@ -1,24 +1,24 @@
 <script lang="ts" setup>
 import { ref, computed, watch } from 'vue'
-import { useGrapes, useSelectedComponent, usePages } from '@/composables'
+import { useGrapes, useSelectedComponent, usePages } from '@/components/WebBuilder/composables'
 import '@/assets/vue-grapes.css'
 import { Icon } from '@iconify/vue'
-import BlocksPanel from '@/components/BlocksPanel.vue'
-import StylesPropertiesPanel from '@/components/StylesPropertiesPanel.vue'
-import GlobalSettingsPanel from '@/components/GlobalSettingsPanel.vue'
-import PagesPanel from '@/components/PagesPanel.vue'
-import LayersPanel from '@/components/LayersPanel.vue'
-import PageSettingsModal from '@/components/PageSettingsModal.vue'
-import TopBar from '@/components/TopBar.vue'
+import BlocksPanel from '@/components/WebBuilder/components/BlocksPanel.vue'
+import StylesPropertiesPanel from '@/components/WebBuilder/components/StylesPropertiesPanel.vue'
+import GlobalSettingsPanel from '@/components/WebBuilder/components/GlobalSettingsPanel.vue'
+import PagesPanel from '@/components/WebBuilder/components/PagesPanel.vue'
+import LayersPanel from '@/components/WebBuilder/components/LayersPanel.vue'
+import PageSettingsModal from '@/components/WebBuilder/components/PageSettingsModal.vue'
+import TopBar from '@/components/WebBuilder/components/TopBar.vue'
 import grapesjsTailwind from 'grapesjs-tailwind'
 import {
   type PageSettings,
   getPageSettingsFromPage,
   applyPageSettingsToPage,
-} from '@/utils/pageSettings'
-import { buildPublishPayload } from '@/utils/publish'
-import { collectUsedClasses, buildTailwindCss } from '@/utils/tailwind'
-import { saveDraft } from '@/utils/draftStorage'
+} from '@/components/WebBuilder/utils/pageSettings'
+import { buildPublishPayload } from '@/components/WebBuilder/utils/publish'
+import { collectUsedClasses, buildTailwindCss } from '@/components/WebBuilder/utils/tailwind'
+import { saveDraft } from '@/components/WebBuilder/utils/draftStorage'
 // Use ref to determine container for the canvas
 const canvas = ref(null)
 const escapeName = (name: string) => `${name}`.trim().replace(/([^a-z0-9\w-:/]+)/gi, '-')
@@ -184,10 +184,6 @@ const openPageSettings = () => {
   showPageSettings.value = true
 }
 
-const closePageSettings = () => {
-  showPageSettings.value = false
-}
-
 const savePageSettings = () => {
   const page = pagesMgr.selected
   applyPageSettingsToPage(page, pageSettings.value)
@@ -196,48 +192,39 @@ const savePageSettings = () => {
 </script>
 
 <template>
-  <div class="h-screen flex flex-col relative">
-    <TopBar
-      :active-panel="activePanel"
-      :show-menu="showMenu"
-      :show-layers="showLayers"
-      :grapes="grapes"
-      @toggle-menu="toggleMenu"
-      @select-panel="handleSelectPanel"
-      @open-page-settings="openPageSettings"
-      @toggle-layers="toggleLayers"
-      @preview="openPreview"
-      @save-draft="handleSaveDraft"
-      @publish="handlePublish"
-    />
-    <div class="flex-1 min-h-0 grid grid-cols-[280px_1fr]">
-      <div class="min-h-0 overflow-y-auto overflow-x-hidden border-r">
-        <BlocksPanel v-show="activePanel === 'blocks'" :grapes="grapes" />
-        <PagesPanel v-show="activePanel === 'pages'" :grapes="grapes" />
-        <GlobalSettingsPanel v-show="activePanel === 'global'" :grapes="grapes" />
-        <StylesPropertiesPanel v-show="activePanel === 'styles'" :grapes="grapes" />
-      </div>
-      <div class="relative">
-        <div
-          ref="canvas"
-          class="absolute inset-0 transition-opacity duration-200"
-          :class="isEditorReady ? 'opacity-100' : 'opacity-0 pointer-events-none'"
-        ></div>
-        <div
-          v-if="!isEditorReady"
-          class="absolute inset-0 z-10 flex gap-3 flex-col items-center justify-center bg-white/80 text-sm text-gray-500"
-        >
-        <Icon icon="eos-icons:loading" class="text-2xl" />
-          正在加载编辑器...
+  <div class="h-screen flex flex-col relative" v-loading="!isEditorReady">
+    <div v-show="isEditorReady">
+      <TopBar
+        :active-panel="activePanel"
+        :show-menu="showMenu"
+        :show-layers="showLayers"
+        :grapes="grapes"
+        @toggle-menu="toggleMenu"
+        @select-panel="handleSelectPanel"
+        @open-page-settings="openPageSettings"
+        @toggle-layers="toggleLayers"
+        @preview="openPreview"
+        @save-draft="handleSaveDraft"
+        @publish="handlePublish"
+      />
+      <div class="flex-1 min-h-0 grid grid-cols-[280px_1fr]">
+        <div class="min-h-0 overflow-y-auto overflow-x-hidden border-r">
+          <BlocksPanel v-show="activePanel === 'blocks'" :grapes="grapes" />
+          <PagesPanel v-show="activePanel === 'pages'" :grapes="grapes" />
+          <GlobalSettingsPanel v-show="activePanel === 'global'" :grapes="grapes" />
+          <StylesPropertiesPanel v-show="activePanel === 'styles'" :grapes="grapes" />
+        </div>
+        <div class="relative">
+          <div ref="canvas" class="absolute inset-0" />
         </div>
       </div>
-    </div>
-    <LayersPanel v-show="showLayers" :grapes="grapes" @close="showLayers = false" />
+      <LayersPanel v-show="showLayers" :grapes="grapes" @close="showLayers = false" />
 
-    <PageSettingsModal
-      v-model="showPageSettings"
-      :settings="pageSettings"
-      @save="savePageSettings"
-    />
+      <PageSettingsModal
+        v-model="showPageSettings"
+        :settings="pageSettings"
+        @save="savePageSettings"
+      />
+    </div>
   </div>
 </template>

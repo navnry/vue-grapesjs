@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { ref } from 'vue'
 import { Icon } from '@iconify/vue'
-import DeviceSwitcher from '@/components/DeviceSwitcher.vue'
+import DeviceSwitcher from '@/components/WebBuilder/components/DeviceSwitcher.vue'
 
 const props = defineProps<{
   activePanel: 'blocks' | 'pages' | 'styles' | 'global'

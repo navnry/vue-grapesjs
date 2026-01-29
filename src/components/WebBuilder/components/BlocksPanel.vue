@@ -1,8 +1,9 @@
 <script lang="ts" setup>
 import { computed, reactive, ref } from 'vue'
 import { Icon } from '@iconify/vue'
-import { useBlockManager } from '@/composables'
-import { componentCategories, componentTemplates } from '@/utils/template-library'
+import { useBlockManager } from '@/components/WebBuilder/composables'
+import { componentCategories, componentTemplates } from '@/components/WebBuilder/utils/template-library'
+import type { ComponentTemplate } from '@/components/WebBuilder/types/editor'
 
 const props = defineProps<{
   grapes: any
@@ -72,7 +73,7 @@ const getBlockMedia = (block: any) => {
 const templateCategories = computed(() => {
   return componentCategories.map((category) => ({
     ...category,
-    items: componentTemplates.filter((tpl) => tpl.category === category.id),
+    items: componentTemplates.filter((tpl: ComponentTemplate) => tpl.category === category.id),
   }))
 })
 
@@ -83,7 +84,7 @@ const filteredTemplateGroups = computed(() => {
   return templateCategories.value
     .map((category) => ({
       ...category,
-      items: category.items.filter((tpl) => tpl.category === templateFilter.value),
+      items: category.items.filter((tpl: ComponentTemplate) => tpl.category === templateFilter.value),
     }))
     .filter((category) => category.items.length > 0)
 })

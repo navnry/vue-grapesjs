@@ -36,6 +36,52 @@ const selectedStyles = computed<Record<string, any>>(() => {
   return {}
 })
 
+const SAFE_CLASS_RE = /^[A-Za-z0-9_-]+$/
+
+const classTags = computed<string[]>({
+  get: () => {
+    const attrClass = selected.component?.attributes?.class
+    const attrList =
+      typeof attrClass === 'string'
+        ? attrClass
+            .split(/\s+/)
+            .map((name) => name.trim())
+            .filter(Boolean)
+        : []
+
+    if (attrList.length) return attrList
+
+    const classes = selected.component?.classes ?? []
+    return classes
+      .map((cls: any) => cls?.get?.('name') ?? cls?.name ?? cls?.getName?.() ?? '')
+      .map((name: string) => name.trim())
+      .filter(Boolean)
+  },
+  set: (next) => {
+    const comp = selected.component
+    if (!comp) return
+    const normalized = Array.from(
+      new Set(next.map((name) => name.trim()).filter(Boolean))
+    )
+    const classString = normalized.join(' ')
+    if (typeof comp.addAttributes === 'function') {
+      comp.addAttributes({ class: classString })
+    }
+    if (typeof comp.setClass === 'function') {
+      const hasUnsafe = normalized.some((name) => !SAFE_CLASS_RE.test(name))
+      const safeClasses = normalized.filter((name) => SAFE_CLASS_RE.test(name))
+      if (!hasUnsafe) {
+        comp.setClass(safeClasses)
+      } else if (safeClasses.length) {
+        comp.setClass(safeClasses)
+        if (typeof comp.addAttributes === 'function') {
+          comp.addAttributes({ class: classString })
+        }
+      }
+    }
+  },
+})
+
 const updateStyleValue = (key: string, value: string) => {
   const model = styles.selected?.rule?._model ?? styles.selected?.rule
   if (!model || typeof model.getStyle !== 'function') return
@@ -93,8 +139,9 @@ props.grapes.onInit((editor: any) => {
     </div>
 
     <div v-else class="p-3 space-y-2">
-      <div class="text-xs text-gray-500">
-        {{ styles.selected?.selector || 'No selector' }}
+      <div class="space-y-1">
+        <div class="text-xs text-gray-600">Classes</div>
+        <el-input-tag v-model="classTags" size="small" placeholder="添加 class" />
       </div>
       <div v-if="Object.keys(selectedStyles).length === 0" class="text-xs text-gray-400">
         暂无样式

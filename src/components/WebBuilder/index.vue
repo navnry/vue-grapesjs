@@ -21,7 +21,7 @@ import { collectUsedClasses, buildTailwindCss } from '@/components/WebBuilder/ut
 import { saveDraft } from '@/components/WebBuilder/utils/draftStorage'
 // Use ref to determine container for the canvas
 const canvas = ref(null)
-const escapeName = (name: string) => `${name}`.trim().replace(/([^a-z0-9\w-:/]+)/gi, '-')
+const escapeName = (name: string) => `${name}`.trim()
 
 // Pass GrapesJS configuration object to useGrapes
 const grapes = useGrapes({

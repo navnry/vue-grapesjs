@@ -20,8 +20,10 @@
     "element-plus": "^2.13.1",
     "grapesjs": "^0.22.14",
     "grapesjs-tailwind": "^1.0.13",
+    "interactjs": "^1.10.27",
     "pinia": "^3.0.4",
     "sass": "^1.97.2",
+    "sortablejs": "^1.15.6",
     "vue": "^3.5.26",
     "vue-grapesjs-composables": "^0.3.0",
     "vue-router": "^4.6.4"
@@ -29,6 +31,7 @@
   "devDependencies": {
     "@tsconfig/node24": "^24.0.3",
     "@types/node": "^24.10.4",
+    "@types/sortablejs": "^1.15.9",
     "@vitejs/plugin-vue": "^6.0.3",
     "@vue/eslint-config-prettier": "^10.2.0",
     "@vue/eslint-config-typescript": "^14.6.0",

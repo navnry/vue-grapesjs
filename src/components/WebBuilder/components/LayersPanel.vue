@@ -1,8 +1,9 @@
 <script lang="ts" setup>
-import { computed, isRef, ref, onBeforeUnmount, onMounted } from 'vue'
+import { computed, isRef, ref, onBeforeUnmount, onMounted, nextTick } from 'vue'
 import { Icon } from '@iconify/vue'
 import { useLayers, useSelectedComponent } from '@/components/WebBuilder/composables'
 import LayersTree from '@/components/WebBuilder/components/LayersTree.vue'
+import interact from 'interactjs'
 
 const props = defineProps<{
   grapes: any
@@ -79,9 +80,11 @@ const toggleAll = () => {
   treeRef.value?.toggleAll(allExpanded.value)
 }
 
+const panelRef = ref<HTMLElement | null>(null)
 const pos = ref({ x: 0, y: 64 })
 const panelWidth = 256
 const panelMargin = 16
+let interactInstance: any = null
 
 const updateDefaultPos = () => {
   pos.value = {
@@ -89,38 +92,48 @@ const updateDefaultPos = () => {
     y: pos.value.y,
   }
 }
-const dragging = ref(false)
-const dragOffset = { x: 0, y: 0 }
 
-const onMouseMove = (e: MouseEvent) => {
-  if (!dragging.value) return
-  pos.value = {
-    x: e.clientX - dragOffset.x,
-    y: e.clientY - dragOffset.y,
-  }
-}
-
-const onMouseUp = () => {
-  dragging.value = false
-  window.removeEventListener('mousemove', onMouseMove)
-  window.removeEventListener('mouseup', onMouseUp)
-}
-
-const onDragStart = (e: MouseEvent) => {
-  dragging.value = true
-  dragOffset.x = e.clientX - pos.value.x
-  dragOffset.y = e.clientY - pos.value.y
-  window.addEventListener('mousemove', onMouseMove)
-  window.addEventListener('mouseup', onMouseUp)
-}
-
-updateDefaultPos()
-window.addEventListener('resize', updateDefaultPos)
+onMounted(() => {
+  updateDefaultPos()
+  window.addEventListener('resize', updateDefaultPos)
+  
+  nextTick(() => {
+    if (panelRef.value) {
+      interactInstance = interact(panelRef.value)
+        .draggable({
+          allowFrom: '.cursor-move',
+          listeners: {
+            start() {
+              // 拖拽开始
+            },
+            move(event: any) {
+              const newX = pos.value.x + event.dx
+              const newY = pos.value.y + event.dy
+              
+              // 限制在窗口内
+              const minX = 0
+              const minY = 0
+              const maxX = window.innerWidth - panelWidth
+              const maxY = window.innerHeight - 100 // 假设面板高度约 400px
+              
+              pos.value.x = Math.max(minX, Math.min(maxX, newX))
+              pos.value.y = Math.max(minY, Math.min(maxY, newY))
+            },
+            end() {
+              // 拖拽结束，可以在这里保存位置到 localStorage
+            },
+          },
+        })
+    }
+  })
+})
 
 onBeforeUnmount(() => {
   window.removeEventListener('resize', updateDefaultPos)
-  window.removeEventListener('mousemove', onMouseMove)
-  window.removeEventListener('mouseup', onMouseUp)
+  if (interactInstance) {
+    interactInstance.unset()
+    interactInstance = null
+  }
 })
 
 onMounted(() => {
@@ -135,12 +148,12 @@ onBeforeUnmount(() => {
 <template>
   <div>
     <div
-      class="absolute w-64 bg-white/95 backdrop-blur border rounded shadow z-10"
+      ref="panelRef"
+      class="absolute w-64 bg-white/80 backdrop-blur-[5px] border rounded shadow z-10"
       :style="{ left: `${pos.x}px`, top: `${pos.y}px` }"
     >
       <div
         class="px-3 py-2 border-b text-sm font-medium text-gray-700 grid grid-cols-[1fr_auto_1fr] items-center gap-2 cursor-move select-none"
-        @mousedown="onDragStart"
       >
         <button
           type="button"
@@ -169,6 +182,7 @@ onBeforeUnmount(() => {
           :nodes="nodes"
           :on-select="layers.select"
           :selected-key="selectedKey"
+          :parent-collection="(layers.wrapper as any)?.components ?? (layers.wrapper as any)?._model?.get?.('components')"
           @context="openContextMenu"
         />
       </div>

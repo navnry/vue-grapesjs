@@ -7,6 +7,7 @@ const props = defineProps<{
   activePanel: 'blocks' | 'pages' | 'styles' | 'global'
   showMenu: boolean
   showLayers: boolean
+  showCode: boolean
   grapes: any
 }>()
 
@@ -15,6 +16,7 @@ const emit = defineEmits<{
   (e: 'select-panel', panel: 'blocks' | 'pages' | 'global'): void
   (e: 'open-page-settings'): void
   (e: 'toggle-layers'): void
+  (e: 'toggle-code'): void
   (e: 'preview'): void
   (e: 'save-draft'): void
   (e: 'publish'): void
@@ -75,6 +77,16 @@ const showPublishMenu = ref(false)
       <DeviceSwitcher :grapes="props.grapes" />
     </div>
     <div class="flex h-full justify-end pl-3 gap-3 relative">
+      <button
+        type="button"
+        class="w-8 h-8 self-center flex items-center justify-center rounded hover:bg-editor-btn-hover"
+        :class="props.showCode ? 'bg-editor-btn-active text-white' : 'text-white'"
+        @click="emit('toggle-code')"
+        :aria-pressed="props.showCode"
+        aria-label="Toggle code editor"
+      >
+        <Icon icon="carbon:code" />
+      </button>
       <button
         type="button"
         class="w-8 h-8 self-center flex items-center justify-center rounded hover:bg-editor-btn-hover"

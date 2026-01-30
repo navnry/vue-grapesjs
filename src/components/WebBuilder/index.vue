@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { ref, computed, watch } from 'vue'
 import { useGrapes, useSelectedComponent, usePages } from '@/components/WebBuilder/composables'
+import useCodeEditor from '@/components/WebBuilder/composables/useCodeEditor'
 import '@/assets/vue-grapes.css'
 import { Icon } from '@iconify/vue'
 import BlocksPanel from '@/components/WebBuilder/components/BlocksPanel.vue'
@@ -9,6 +10,7 @@ import GlobalSettingsPanel from '@/components/WebBuilder/components/GlobalSettin
 import PagesPanel from '@/components/WebBuilder/components/PagesPanel.vue'
 import LayersPanel from '@/components/WebBuilder/components/LayersPanel.vue'
 import PageSettingsModal from '@/components/WebBuilder/components/PageSettingsModal.vue'
+import CodeModal from '@/components/WebBuilder/components/CodeModal.vue'
 import TopBar from '@/components/WebBuilder/components/TopBar.vue'
 import grapesjsTailwind from 'grapesjs-tailwind'
 import {
@@ -79,6 +81,7 @@ const updateReady = () => {
 }
 const selected = useSelectedComponent(grapes)
 const pagesMgr = usePages(grapes)
+const codeEditor = useCodeEditor(grapes)
 const hasSelection = computed(() => {
   const comp = selected.component
   return !!(comp?._model || typeof comp?.get === 'function')
@@ -113,6 +116,21 @@ const handleSelectPanel = (panel: 'blocks' | 'pages' | 'global') => {
 const showLayers = ref(true)
 const toggleLayers = () => {
   showLayers.value = !showLayers.value
+}
+
+const showCode = ref(false)
+const toggleCode = () => {
+  showCode.value = !showCode.value
+  if (showCode.value) {
+    codeEditor.refreshCode()
+  }
+}
+
+const handleCodeSave = (data: { html: string; css: string; js: string }) => {
+  codeEditor.updateCode('html', data.html)
+  codeEditor.updateCode('css', data.css)
+  codeEditor.updateCode('js', data.js)
+  showCode.value = false
 }
 
 const handlePublish = async () => {
@@ -198,11 +216,13 @@ const savePageSettings = () => {
           :active-panel="activePanel"
           :show-menu="showMenu"
           :show-layers="showLayers"
+          :show-code="showCode"
           :grapes="grapes"
           @toggle-menu="toggleMenu"
           @select-panel="handleSelectPanel"
           @open-page-settings="openPageSettings"
           @toggle-layers="toggleLayers"
+          @toggle-code="toggleCode"
           @preview="openPreview"
           @save-draft="handleSaveDraft"
           @publish="handlePublish"
@@ -224,6 +244,13 @@ const savePageSettings = () => {
           v-model="showPageSettings"
           :settings="pageSettings"
           @save="savePageSettings"
+        />
+        <CodeModal
+          v-model="showCode"
+          :html="codeEditor.html.value"
+          :css="codeEditor.css.value"
+          :js="codeEditor.js.value"
+          @save="handleCodeSave"
         />
       </div>
   </div>

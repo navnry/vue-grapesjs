@@ -141,14 +141,14 @@ defineExpose({ toggleAll })
         >
           <Icon
             icon="tabler:caret-right-filled"
-            class="transition-transform duration-200"
+            class="transition-transform duration-200 text-xs"
             :class="{ 'rotate-90': isOpen(node) }"
           />
         </button>
         <span v-else class="w-5 h-5 inline-block"></span>
         <button
           type="button"
-          class="flex-1 text-left text-xs px-2 py-1 rounded hover:bg-gray-50 pointer-events-auto"
+          class="flex-1 text-left text-xs font-semibold p-1.5 rounded hover:bg-gray-50 pointer-events-auto"
           :class="getNodeKey(node) === props.selectedKey ? 'bg-blue-50 text-blue-700' : ''"
           @click="props.onSelect(node._model ?? node)"
           @contextmenu.prevent="emit('context', { node, x: $event.clientX, y: $event.clientY })"
@@ -158,7 +158,7 @@ defineExpose({ toggleAll })
       </div>
       <div
         v-if="getChildrenNodes(node).length"
-        class="pl-3 collapse-wrapper"
+        class="pl-2 collapse-wrapper"
         :class="{ open: isOpen(node) }"
       >
         <div class="collapse-content">

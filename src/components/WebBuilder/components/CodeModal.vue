@@ -1,7 +1,9 @@
 <script lang="ts" setup>
-import { ref, watch, nextTick, computed } from 'vue'
+import { ref, watch, nextTick, computed, onMounted, onBeforeUnmount } from 'vue'
 import { ElDialog, ElTabs, ElTabPane, ElButton } from 'element-plus'
 import { codeToHtml } from 'shiki'
+import loader from '@monaco-editor/loader'
+import type { editor } from 'monaco-editor'
 
 const props = defineProps<{
   modelValue: boolean
@@ -20,15 +22,11 @@ const htmlCode = ref('')
 const cssCode = ref('')
 const jsCode = ref('')
 
-const htmlRef = ref<HTMLElement | null>(null)
-const cssRef = ref<HTMLElement | null>(null)
-const jsRef = ref<HTMLElement | null>(null)
-const htmlTextareaRef = ref<HTMLTextAreaElement | null>(null)
-const cssTextareaRef = ref<HTMLTextAreaElement | null>(null)
-const jsTextareaRef = ref<HTMLTextAreaElement | null>(null)
-const htmlPreviewRef = ref<HTMLElement | null>(null)
-const cssPreviewRef = ref<HTMLElement | null>(null)
-const jsPreviewRef = ref<HTMLElement | null>(null)
+const htmlEditorRef = ref<HTMLElement | null>(null)
+const cssEditorRef = ref<HTMLElement | null>(null)
+const jsEditorRef = ref<HTMLElement | null>(null)
+const jsMonacoContainerRef = ref<HTMLElement | null>(null)
+let jsMonacoEditor: editor.IStandaloneCodeEditor | null = null
 
 const visible = computed({
   get: () => props.modelValue,
@@ -44,49 +42,189 @@ watch(
       jsCode.value = props.js
       await nextTick()
       await highlightCode()
-      syncScroll(htmlTextareaRef.value, htmlPreviewRef.value)
-      syncScroll(cssTextareaRef.value, cssPreviewRef.value)
-      syncScroll(jsTextareaRef.value, jsPreviewRef.value)
+      await initMonacoEditor()
     }
   },
   { immediate: true },
 )
 
-watch([htmlCode, cssCode, jsCode], () => {
+watch([htmlCode, cssCode], () => {
   nextTick(() => {
     highlightCode()
   })
 })
 
+watch(jsCode, (newValue) => {
+  if (jsMonacoEditor && jsMonacoEditor.getValue() !== newValue) {
+    jsMonacoEditor.setValue(newValue)
+  }
+})
+
+watch(activeTab, async (newTab) => {
+  if (newTab === 'js') {
+    await nextTick()
+    await initMonacoEditor()
+  }
+})
+
 const highlightCode = async () => {
   try {
-    if (htmlRef.value) {
-      const html = await codeToHtml(htmlCode.value, {
+    if (htmlEditorRef.value) {
+      const html = await codeToHtml(htmlCode.value || '', {
         lang: 'html',
-        theme: 'github-dark',
+        theme: 'github-light',
       })
-      htmlRef.value.innerHTML = html
+      const wasFocused = document.activeElement === htmlEditorRef.value
+      const selection = saveSelection(htmlEditorRef.value)
+      htmlEditorRef.value.innerHTML = html
+      if (wasFocused) {
+        restoreSelection(htmlEditorRef.value, selection)
+      }
     }
-    if (cssRef.value) {
-      const css = await codeToHtml(cssCode.value, {
+    if (cssEditorRef.value) {
+      const css = await codeToHtml(cssCode.value || '', {
         lang: 'css',
-        theme: 'github-dark',
+        theme: 'github-light',
       })
-      cssRef.value.innerHTML = css
+      const wasFocused = document.activeElement === cssEditorRef.value
+      const selection = saveSelection(cssEditorRef.value)
+      cssEditorRef.value.innerHTML = css
+      if (wasFocused) {
+        restoreSelection(cssEditorRef.value, selection)
+      }
     }
-    if (jsRef.value) {
-      const js = await codeToHtml(jsCode.value, {
-        lang: 'javascript',
-        theme: 'github-dark',
-      })
-      jsRef.value.innerHTML = js
-    }
+    // JavaScript 使用 Monaco Editor，不需要 Shiki 高亮
   } catch (error) {
     console.error('[CodeModal] Error highlighting code:', error)
   }
 }
 
+const saveSelection = (containerEl: HTMLElement) => {
+  const selection = window.getSelection()
+  if (!selection || selection.rangeCount === 0) return null
+
+  const range = selection.getRangeAt(0)
+  if (!range || !containerEl.contains(range.commonAncestorContainer)) return null
+
+  const preSelectionRange = range.cloneRange()
+  preSelectionRange.selectNodeContents(containerEl)
+  preSelectionRange.setEnd(range.startContainer, range.startOffset)
+  const start = preSelectionRange.toString().length
+
+  return {
+    start,
+    end: start + range.toString().length,
+  }
+}
+
+const restoreSelection = (containerEl: HTMLElement, savedSel: { start: number; end: number } | null) => {
+  if (!savedSel) return
+
+  let nodeStack: Node[] = [containerEl]
+  let node: Node | undefined
+  let foundStart = false
+  let stop = false
+  let charCount = 0
+
+  while (!stop && (node = nodeStack.pop())) {
+    if (node.nodeType === Node.TEXT_NODE) {
+      const nextCharCount = charCount + (node.textContent?.length || 0)
+      if (!foundStart && savedSel.start >= charCount && savedSel.start <= nextCharCount) {
+        const range = document.createRange()
+        const sel = window.getSelection()
+        range.setStart(node, savedSel.start - charCount)
+        sel?.removeAllRanges()
+        sel?.addRange(range)
+        foundStart = true
+      }
+      if (foundStart && savedSel.end >= charCount && savedSel.end <= nextCharCount) {
+        const range = window.getSelection()?.getRangeAt(0)
+        if (range) {
+          range.setEnd(node, savedSel.end - charCount)
+          stop = true
+        }
+      }
+      charCount = nextCharCount
+    } else if (node.nodeType === Node.ELEMENT_NODE) {
+      const element = node as Element
+      let i = element.childNodes.length
+      while (i--) {
+        const childNode = element.childNodes[i]
+        if (childNode) {
+          nodeStack.push(childNode)
+        }
+      }
+    }
+  }
+}
+
+const handleInput = (event: Event, type: 'html' | 'css' | 'js') => {
+  const target = event.target as HTMLElement
+  const text = target.innerText || target.textContent || ''
+
+  if (type === 'html') {
+    htmlCode.value = text
+  } else if (type === 'css') {
+    cssCode.value = text
+  } else if (type === 'js') {
+    jsCode.value = text
+  }
+
+  nextTick(() => {
+    highlightCode()
+  })
+}
+
+const initMonacoEditor = async () => {
+  if (!jsMonacoContainerRef.value || jsMonacoEditor) return
+
+  try {
+    const monaco = await loader.init()
+    
+    jsMonacoEditor = monaco.editor.create(jsMonacoContainerRef.value, {
+      value: jsCode.value,
+      language: 'javascript',
+      theme: 'vs',
+      automaticLayout: true,
+      minimap: { enabled: false },
+      scrollBeyondLastLine: false,
+      wordWrap: 'on',
+      fontSize: 14,
+      fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+      lineHeight: 1.5,
+      suggestOnTriggerCharacters: true,
+      quickSuggestions: {
+        other: true,
+        comments: true,
+        strings: true,
+      },
+      acceptSuggestionOnCommitCharacter: true,
+      acceptSuggestionOnEnter: 'on',
+      tabCompletion: 'on',
+      wordBasedSuggestions: 'allDocuments',
+    })
+
+    if (jsMonacoEditor) {
+      jsMonacoEditor.onDidChangeModelContent(() => {
+        if (jsMonacoEditor) {
+          const value = jsMonacoEditor.getValue()
+          if (jsCode.value !== value) {
+            jsCode.value = value
+          }
+        }
+      })
+    }
+  } catch (error) {
+    console.error('[CodeModal] Error initializing Monaco Editor:', error)
+  }
+}
+
 const handleSave = () => {
+  // 从 Monaco Editor 获取最新值
+  if (jsMonacoEditor) {
+    jsCode.value = jsMonacoEditor.getValue()
+  }
+  
   emit('save', {
     html: htmlCode.value,
     css: cssCode.value,
@@ -95,31 +233,13 @@ const handleSave = () => {
   visible.value = false
 }
 
-const syncScroll = (textarea: HTMLTextAreaElement | null, preview: HTMLElement | null) => {
-  if (!textarea || !preview) return
+onBeforeUnmount(() => {
+  if (jsMonacoEditor) {
+    jsMonacoEditor.dispose()
+    jsMonacoEditor = null
+  }
+})
 
-  let isScrolling = false
-
-  textarea.addEventListener('scroll', () => {
-    if (isScrolling) return
-    isScrolling = true
-    preview.scrollTop = textarea.scrollTop
-    preview.scrollLeft = textarea.scrollLeft
-    requestAnimationFrame(() => {
-      isScrolling = false
-    })
-  })
-
-  preview.addEventListener('scroll', () => {
-    if (isScrolling) return
-    isScrolling = true
-    textarea.scrollTop = preview.scrollTop
-    textarea.scrollLeft = preview.scrollLeft
-    requestAnimationFrame(() => {
-      isScrolling = false
-    })
-  })
-}
 </script>
 
 <template>
@@ -136,42 +256,28 @@ const syncScroll = (textarea: HTMLTextAreaElement | null, preview: HTMLElement |
     >
       <ElTabs v-model="activeTab" class="code-tabs">
         <ElTabPane label="HTML" name="html">
-          <div class="code-editor-wrapper h-[60vh]">
-            <pre
-              ref="htmlPreviewRef"
-              class="h-full"
-            ><code ref="htmlRef" class="language-html"></code></pre>
-          </div>
+          <div
+            ref="htmlEditorRef"
+            contenteditable
+            class="code-editor"
+            @input="handleInput($event, 'html')"
+            spellcheck="false"
+          ></div>
         </ElTabPane>
         <ElTabPane label="CSS" name="css">
-          <div class="code-editor-wrapper h-[60vh]">
-            <textarea
-              ref="cssTextareaRef"
-              v-model="cssCode"
-              class="code-textarea"
-              placeholder="CSS 代码..."
-              spellcheck="false"
-            ></textarea>
-            <pre
-              ref="cssPreviewRef"
-              class="code-preview h-full"
-            ><code ref="cssRef" class="language-css"></code></pre>
-          </div>
+          <div
+            ref="cssEditorRef"
+            contenteditable
+            class="code-editor"
+            @input="handleInput($event, 'css')"
+            spellcheck="false"
+          ></div>
         </ElTabPane>
         <ElTabPane label="JavaScript" name="js">
-          <div class="code-editor-wrapper h-[60vh]">
-            <textarea
-              ref="jsTextareaRef"
-              v-model="jsCode"
-              class="code-textarea"
-              placeholder="JavaScript 代码..."
-              spellcheck="false"
-            ></textarea>
-            <pre
-              ref="jsPreviewRef"
-              class="code-preview h-full"
-            ><code ref="jsRef" class="language-javascript"></code></pre>
-          </div>
+          <div
+            ref="jsMonacoContainerRef"
+            class="monaco-editor-container"
+          ></div>
         </ElTabPane>
       </ElTabs>
       <template #footer>
@@ -186,7 +292,7 @@ const syncScroll = (textarea: HTMLTextAreaElement | null, preview: HTMLElement |
 
 <style lang="scss" scoped>
 :deep(.el-dialog) {
-  background-color: #1E1E1E;
+  //background-color: #1E1E1E;
   padding: 0;
   .el-dialog__header{
     padding: 0;
@@ -196,7 +302,7 @@ const syncScroll = (textarea: HTMLTextAreaElement | null, preview: HTMLElement |
     justify-content: center;
   }
   .el-tabs__item{
-    color: #ffffff;
+    //color: #ffffff;
     font-weight: 400;
     &.is-active{
       color: #2251FF;
@@ -204,7 +310,7 @@ const syncScroll = (textarea: HTMLTextAreaElement | null, preview: HTMLElement |
   }
   .el-tabs__nav-wrap:after{
     height: 1px;
-    background-color: #ffffff29;
+    //background-color: #ffffff29;
   }
   .el-tabs__active-bar{
     background-color: #2251FF;
@@ -215,13 +321,61 @@ const syncScroll = (textarea: HTMLTextAreaElement | null, preview: HTMLElement |
   .el-tabs__header{
     margin-bottom: 0;
   }
-  .el-tabs__content{
-    //padding-inline: 15px;
-  }
 }
-:deep(.shiki) {
-  overflow: auto;
-  height: 100%;
+.code-editor {
+  min-height: 60vh;
+  max-height: 60vh;
   padding: 20px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  //background: #1E1E1E;
+  border-radius: 4px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+  font-size: 14px;
+  line-height: 1.5;
+  font-weight: 300;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  word-break: break-all;
+  outline: none;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  caret-color: #333;
+}
+
+.code-editor::-webkit-scrollbar {
+  display: none;
+}
+
+:deep(.shiki) {
+  margin: 0;
+  padding: 0;
+  background: transparent !important;
+  overflow: visible;
+}
+
+:deep(.shiki pre) {
+  margin: 0;
+  padding: 0;
+  background: transparent !important;
+  overflow: visible;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  word-break: break-all;
+}
+
+:deep(.shiki code) {
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  word-break: break-all;
+}
+
+.monaco-editor-container {
+  min-height: 60vh;
+  max-height: 60vh;
+  width: 100%;
 }
 </style>

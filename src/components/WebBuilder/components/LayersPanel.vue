@@ -94,8 +94,8 @@ const updateDefaultPos = () => {
 }
 
 onMounted(() => {
-  updateDefaultPos()
-  window.addEventListener('resize', updateDefaultPos)
+updateDefaultPos()
+window.addEventListener('resize', updateDefaultPos)
   
   nextTick(() => {
     if (panelRef.value) {
